@@ -21,13 +21,14 @@ namespace RpgApi.Controllers
             _context = context;
         }
 
-        [HttpGet("{id}")] //Buscar pelo id
+        [HttpGet("{id}")]
         public async Task<IActionResult> GetSingle(int id)
         {
             try
             {
                 Personagem p = await _context.TB_PERSONAGENS
-                            .FirstOrDefaultAsync(pBusca => pBusca.Id == id);
+                                .Include(p => p.Usuario) 
+                                .FirstOrDefaultAsync(pBusca => pBusca.Id == id);
 
                 return Ok(p);
             }
@@ -36,6 +37,7 @@ namespace RpgApi.Controllers
                 return BadRequest(ex.Message + " - " + ex.InnerException);
             }
         }
+
 
         [HttpGet("GetAll")]
         public async Task<IActionResult> Get()
