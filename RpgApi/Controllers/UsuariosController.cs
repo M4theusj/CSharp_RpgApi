@@ -1,12 +1,13 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using RpgApi.Data;
 using Microsoft.EntityFrameworkCore;
-using System.Linq;
-using System.Threading.Tasks;
-using RpgApi.Utils;
 using RpgApi.Models;
-using System.Collections.Generic;
-using System;
+using RpgApi.Utils;
+
 
 namespace RpgApi.Controllers
 {
@@ -14,16 +15,20 @@ namespace RpgApi.Controllers
     [Route("[controller]")]
     public class UsuariosController : ControllerBase
     {
-        private readonly DataContext _context;
+        private readonly DataContext _context;        
 
         public UsuariosController(DataContext context)
         {
-            _context = context;
+            _context = context;            
         }
 
         private async Task<bool> UsuarioExistente(string username)
         {
-            return await _context.TB_USUARIOS.AnyAsync(x => x.Username.ToLower() == username.ToLower());
+            if (await _context.TB_USUARIOS.AnyAsync(x => x.Username.ToLower() == username.ToLower()))
+            {
+                return true;
+            }
+            return false;
         }
 
         [HttpPost("Registrar")]
@@ -38,7 +43,6 @@ namespace RpgApi.Controllers
                 user.PasswordString = string.Empty;
                 user.PasswordHash = hash;
                 user.PasswordSalt = salt;
-
                 await _context.TB_USUARIOS.AddAsync(user);
                 await _context.SaveChangesAsync();
 
@@ -46,7 +50,7 @@ namespace RpgApi.Controllers
             }
             catch (System.Exception ex)
             {
-                return BadRequest(ex.Message);
+                return BadRequest(ex.Message + " - " + ex.InnerException);
             }
         }
 
@@ -55,8 +59,8 @@ namespace RpgApi.Controllers
         {
             try
             {
-                Usuario usuario = await _context.TB_USUARIOS
-                    .FirstOrDefaultAsync(x => x.Username.ToLower().Equals(credenciais.Username.ToLower()));
+                Usuario? usuario = await _context.TB_USUARIOS
+                   .FirstOrDefaultAsync(x => x.Username.ToLower().Equals(credenciais.Username.ToLower()));
 
                 if (usuario == null)
                 {
@@ -68,57 +72,62 @@ namespace RpgApi.Controllers
                 }
                 else
                 {
-                    usuario.DataAcesso = DateTime.Now;
+                     usuario.DataAcesso = DateTime.Now;
                     _context.TB_USUARIOS.Update(usuario);
                     await _context.SaveChangesAsync();
+
+                    usuario.PasswordHash = null;//Remoção do hash/salt para não transitar no retorno da requisição.
+                    usuario.PasswordSalt = null;
 
                     return Ok(usuario);
                 }
             }
             catch (System.Exception ex)
             {
-                return BadRequest(ex.Message);
+                return BadRequest(ex.Message + " - " + ex.InnerException);
             }
         }
 
-
+        //Método para alteração de Senha.
         [HttpPut("AlterarSenha")]
-        public async Task<IActionResult> AlterarSenha(int idUsuario, string novaSenha)
+        public async Task<IActionResult> AlterarSenhaUsuario(Usuario credenciais)
         {
             try
             {
-                Usuario usuario = await _context.TB_USUARIOS.FirstOrDefaultAsync(x => x.Id == idUsuario);
-                if (usuario == null)
-                    throw new Exception("Usuário não encontrado.");
+                Usuario? usuario = await _context.TB_USUARIOS //Busca o usuário no banco através do login
+                   .FirstOrDefaultAsync(x => x.Username.ToLower().Equals(credenciais.Username.ToLower()));
 
-                Criptografia.CriarPasswordHash(novaSenha, out byte[] hash, out byte[] salt);
-                usuario.PasswordHash = hash;
-                usuario.PasswordSalt = salt;
-                usuario.PasswordString = string.Empty;
+                if (usuario == null) //Se não achar nenhum usuário pelo login, retorna mensagem.
+                    throw new System.Exception("Usuário não encontrado.");
+
+                Criptografia.CriarPasswordHash(credenciais.PasswordString, out byte[] hash, out byte[] salt);
+                usuario.PasswordHash = hash; //Se o usuário existir, executa a criptografia 
+                usuario.PasswordSalt = salt; //guardando o hash e o salt nas propriedades do usuário 
 
                 _context.TB_USUARIOS.Update(usuario);
-                await _context.SaveChangesAsync();
-
-                return Ok("Senha alterada com sucesso.");
+                int linhasAfetadas = await _context.SaveChangesAsync(); //Confirma a alteração no banco
+                return Ok(linhasAfetadas); //Retorna as linhas afetadas (Geralmente sempre 1 linha msm)
             }
-            catch (Exception ex)
+            catch (System.Exception ex)
             {
-                return BadRequest(ex.Message);
+                return BadRequest(ex.Message + " - " + ex.InnerException);
             }
         }
 
-        [HttpGet("ListarUsuarios")]
-        public async Task<ActionResult<List<Usuario>>> ListarUsuarios()
+        [HttpGet("GetAll")]
+        public async Task<IActionResult> GetUsuarios()
         {
             try
             {
-                List<Usuario> listaUsuarios = await _context.TB_USUARIOS.ToListAsync();
-                return Ok(listaUsuarios);
+                List<Usuario> lista = await _context.TB_USUARIOS.ToListAsync();
+                return Ok(lista);
             }
-            catch (Exception ex)
+            catch (System.Exception ex)
             {
-                return BadRequest(ex.Message);
+                return BadRequest(ex.Message + " - " + ex.InnerException);
             }
         }
+
+
     }
 }
