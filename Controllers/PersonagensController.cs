@@ -15,29 +15,31 @@ namespace RpgApi.Controllers
     {
         private readonly DataContext _context;
 
-
         public PersonagensController(DataContext context)
         {
             _context = context;
         }
 
-        [HttpGet("{id}")] //Buscar pelo id
+        [HttpGet("{id}")]
         public async Task<IActionResult> GetSingle(int id)
         {
             try
             {
-                Personagem p = await _context.TB_PERSONAGENS
-                    .Include(ar => ar.Arma) //Inclui na propriedade Arma do objeto p                                    
-                    .Include(us => us.Usuario)
-                    .Include(ph => ph.PersonagemHabilidades)
-                        .ThenInclude(h => h.Habilidade) ////Inclui na lista de PersonagemHabilidade de p
-                    .FirstOrDefaultAsync(pBusca => pBusca.Id == id);
+                var p = await _context.TB_PERSONAGENS
+                    .Include(x => x.Arma)
+                    .Include(x => x.Usuario)
+                    .Include(x => x.PersonagemHabilidades)
+                        .ThenInclude(ph => ph.Habilidade)
+                    .FirstOrDefaultAsync(x => x.Id == id);
+
+                if (p == null)
+                    return NotFound();
 
                 return Ok(p);
             }
-            catch (System.Exception ex)
+            catch (Exception ex)
             {
-                return BadRequest(ex.Message + " - " + ex.InnerException);
+                return BadRequest(ex.Message);
             }
         }
 
@@ -46,35 +48,44 @@ namespace RpgApi.Controllers
         {
             try
             {
-                List<Personagem> lista = await _context.TB_PERSONAGENS.ToListAsync();
+                var lista = await _context.TB_PERSONAGENS.ToListAsync();
                 return Ok(lista);
             }
-            catch (System.Exception ex)
+            catch (Exception ex)
             {
-                return BadRequest(ex.Message + " - " + ex.InnerException);
+                return BadRequest(ex.Message);
             }
         }
 
         [HttpPut("RestaurarPontosVida")]
         public async Task<IActionResult> RestaurarPontosVidaAsync(Personagem p)
         {
-        try
-        {
-        int linhasAfetadas = 0;
-        Personagem? pEncontrado =
-        await _context.Personagens.FirstOrDefaultAsync(pBusca => pBusca.Id == p.Id);
-        pEncontrado.PontosVida = 100;
-        bool atualizou = await TryUpdateModelAsync<Personagem>(pEncontrado, "p",
-        pAtualizar => pAtualizar.PontosVida);
-        // EF vai detectar e atualizar apenas as colunas que foram alteradas.
-        if (atualizou)
-        linhasAfetadas = await _context.SaveChangesAsync();
-        return Ok(linhasAfetadas);
-        }
-        catch (System.Exception ex)
-        {
-        return BadRequest(ex.Message);
-        }
+            try
+            {
+                var pEncontrado = await _context.TB_PERSONAGENS
+                    .FirstOrDefaultAsync(x => x.Id == p.Id);
+
+                if (pEncontrado == null)
+                    return NotFound("Personagem não encontrado.");
+
+                pEncontrado.PontosVida = 100;
+
+                bool atualizou = await TryUpdateModelAsync(
+                    pEncontrado,
+                    prefix: "p",
+                    x => x.PontosVida
+                );
+
+                int linhasAfetadas = atualizou
+                    ? await _context.SaveChangesAsync()
+                    : 0;
+
+                return Ok(linhasAfetadas);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
         [HttpPost]
@@ -84,28 +95,26 @@ namespace RpgApi.Controllers
             {
                 await _context.TB_PERSONAGENS.AddAsync(novoPersonagem);
                 await _context.SaveChangesAsync();
-
                 return Ok(novoPersonagem.Id);
             }
-            catch (System.Exception ex)
+            catch (Exception ex)
             {
-                return BadRequest(ex.Message + " - " + ex.InnerException);
+                return BadRequest(ex.Message);
             }
         }
 
         [HttpPut]
-        public async Task<IActionResult> Update(Personagem novoPersonagem)
+        public async Task<IActionResult> Update(Personagem personagem)
         {
             try
             {
-                _context.TB_PERSONAGENS.Update(novoPersonagem);
-                int linhasAfetadas = await _context.SaveChangesAsync();
-
-                return Ok(linhasAfetadas);
+                _context.TB_PERSONAGENS.Update(personagem);
+                int linhas = await _context.SaveChangesAsync();
+                return Ok(linhas);
             }
-            catch (System.Exception ex)
+            catch (Exception ex)
             {
-                return BadRequest(ex.Message + " - " + ex.InnerException);
+                return BadRequest(ex.Message);
             }
         }
 
@@ -114,15 +123,19 @@ namespace RpgApi.Controllers
         {
             try
             {
-                Personagem? pRemover = await _context.TB_PERSONAGENS.FirstOrDefaultAsync(p => p.Id == id);
+                var pRemover = await _context.TB_PERSONAGENS
+                    .FirstOrDefaultAsync(x => x.Id == id);
+
+                if (pRemover == null)
+                    return NotFound("Personagem não encontrado.");
 
                 _context.TB_PERSONAGENS.Remove(pRemover);
-                int linhaAfetadas = await _context.SaveChangesAsync();
-                return Ok(linhaAfetadas);
+                int linhas = await _context.SaveChangesAsync();
+                return Ok(linhas);
             }
-            catch (System.Exception ex)
+            catch (Exception ex)
             {
-                return BadRequest(ex.Message + " - " + ex.InnerException);
+                return BadRequest(ex.Message);
             }
         }
 
@@ -131,21 +144,23 @@ namespace RpgApi.Controllers
         {
             try
             {
-               PersonagemHabilidade? phRemover = await _context.TB_PERSONAGENS_HABILIDADES
-                    .FirstOrDefaultAsync(phBusca => phBusca.PersonagemId == ph.PersonagemId
-                     && phBusca.HabilidadeId == ph.HabilidadeId);
-                if(phRemover == null)
-                    throw new System.Exception("Personagem ou Habilidade não encontrados");
+                var phRemover = await _context.TB_PERSONAGENS_HABILIDADES
+                    .FirstOrDefaultAsync(x =>
+                        x.PersonagemId == ph.PersonagemId &&
+                        x.HabilidadeId == ph.HabilidadeId
+                    );
+
+                if (phRemover == null)
+                    return NotFound("PersonagemHabilidade não encontrada.");
 
                 _context.TB_PERSONAGENS_HABILIDADES.Remove(phRemover);
-                int linhasAfetadas = await _context.SaveChangesAsync();
-                return Ok(linhasAfetadas);
+                int linhas = await _context.SaveChangesAsync();
+                return Ok(linhas);
             }
-            catch (System.Exception ex)
+            catch (Exception ex)
             {
                 return BadRequest(ex.Message);
             }
         }
-
     }
 }

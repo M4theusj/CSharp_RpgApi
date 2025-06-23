@@ -21,26 +21,31 @@ namespace RpgApi.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> AddPersonagemHabilidadeAsync(PersonagemHabilidade novoPersonagemHabilidade)
+        public async Task<IActionResult> AddPersonagemHabilidadeAsync(PersonagemHabilidade novoPh)
         {
             try
             {
-                Personagem personagem = await _context.TB_PERSONAGENS
+                var personagem = await _context.TB_PERSONAGENS
                     .Include(p => p.Arma)
-                    .Include(p => p.personagemHabilidade).ThenInclude(ps => ps.Habilidade)
-                    .FirstOrDefaultAsync(personagem => personagem.Id == novoPersonagemHabilidade.PersonagemId);
+                    .Include(p => p.PersonagemHabilidades)
+                        .ThenInclude(ph => ph.Habilidade)
+                    .FirstOrDefaultAsync(p => p.Id == novoPh.PersonagemId);
 
-                Habilidade habilidade = await _context.TB_HABILIDADES
-                    .FirstOrDefaultAsync(h => h.Id == novoPersonagemHabilidade.HabilidadeId);
+                if (personagem == null)
+                    return NotFound("Personagem não encontrado.");
+
+                var habilidade = await _context.TB_HABILIDADES
+                    .FirstOrDefaultAsync(h => h.Id == novoPh.HabilidadeId);
 
                 if (habilidade == null)
-                    throw new Exception("Habilidade não encontrada.");
+                    return NotFound("Habilidade não encontrada.");
 
-                PersonagemHabilidade ph = new PersonagemHabilidade
+                var ph = new PersonagemHabilidade
                 {
                     Personagem = personagem,
                     Habilidade = habilidade
                 };
+
                 await _context.TB_PERSONAGENS_HABILIDADES.AddAsync(ph);
                 await _context.SaveChangesAsync();
 
@@ -57,11 +62,11 @@ namespace RpgApi.Controllers
         {
             try
             {
-                Personagem p = await _context.TB_PERSONAGENS
-                    .Include(ar => ar.Arma)
-                    .Include(ph => ph.personagemHabilidade)
-                        .ThenInclude(h => h.Habilidade)
-                    .FirstOrDefaultAsync(pBusca => pBusca.Id == id);
+                var p = await _context.TB_PERSONAGENS
+                    .Include(p => p.Arma)
+                    .Include(p => p.PersonagemHabilidades)
+                        .ThenInclude(ph => ph.Habilidade)
+                    .FirstOrDefaultAsync(p => p.Id == id);
 
                 if (p == null)
                     return NotFound("Personagem não encontrado.");
@@ -79,12 +84,12 @@ namespace RpgApi.Controllers
         {
             try
             {
-                List<PersonagemHabilidade> habilidades = await _context.TB_PERSONAGENS_HABILIDADES
+                var lista = await _context.TB_PERSONAGENS_HABILIDADES
                     .Include(ph => ph.Habilidade)
-                    .Where(ph => ph.Personagem.Id == idPersonagem)
+                    .Where(ph => ph.PersonagemId == idPersonagem)
                     .ToListAsync();
 
-                return Ok(habilidades);
+                return Ok(lista);
             }
             catch (Exception ex)
             {
@@ -97,8 +102,8 @@ namespace RpgApi.Controllers
         {
             try
             {
-                List<Habilidade> habilidades = await _context.TB_HABILIDADES.ToListAsync();
-                return Ok(habilidades);
+                var lista = await _context.TB_HABILIDADES.ToListAsync();
+                return Ok(lista);
             }
             catch (Exception ex)
             {
@@ -112,15 +117,18 @@ namespace RpgApi.Controllers
             try
             {
                 var phRemover = await _context.TB_PERSONAGENS_HABILIDADES
-                    .FirstOrDefaultAsync(p => p.PersonagemId == ph.PersonagemId && p.HabilidadeId == ph.HabilidadeId);
+                    .FirstOrDefaultAsync(x =>
+                        x.PersonagemId == ph.PersonagemId &&
+                        x.HabilidadeId == ph.HabilidadeId
+                    );
 
                 if (phRemover == null)
-                    return NotFound("PersonagemHabilidade não encontrado.");
+                    return NotFound("PersonagemHabilidade não encontrada.");
 
                 _context.TB_PERSONAGENS_HABILIDADES.Remove(phRemover);
                 await _context.SaveChangesAsync();
 
-                return Ok("PersonagemHabilidade removido com sucesso.");
+                return Ok("Removido com sucesso");
             }
             catch (Exception ex)
             {
