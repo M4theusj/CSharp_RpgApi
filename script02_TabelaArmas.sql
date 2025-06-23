@@ -1,4 +1,12 @@
 ﻿BEGIN TRANSACTION;
+DECLARE @var sysname;
+SELECT @var = [d].[name]
+FROM [sys].[default_constraints] [d]
+INNER JOIN [sys].[columns] [c] ON [d].[parent_column_id] = [c].[column_id] AND [d].[parent_object_id] = [c].[object_id]
+WHERE ([d].[parent_object_id] = OBJECT_ID(N'[TB_PERSONAGENS]') AND [c].[name] = N'Nome');
+IF @var IS NOT NULL EXEC(N'ALTER TABLE [TB_PERSONAGENS] DROP CONSTRAINT [' + @var + '];');
+ALTER TABLE [TB_PERSONAGENS] ALTER COLUMN [Nome] Varchar(200) NOT NULL;
+
 CREATE TABLE [TB_ARMAS] (
     [Id] int NOT NULL IDENTITY,
     [Nome] Varchar(200) NOT NULL,
@@ -20,7 +28,7 @@ IF EXISTS (SELECT * FROM [sys].[identity_columns] WHERE [name] IN (N'Id', N'Dano
     SET IDENTITY_INSERT [TB_ARMAS] OFF;
 
 INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
-VALUES (N'20250331022018_MigracaoArma', N'9.0.2');
+VALUES (N'20250331112702_MigracaoArma', N'9.0.2');
 
 COMMIT;
 GO

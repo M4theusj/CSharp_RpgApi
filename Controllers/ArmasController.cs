@@ -1,16 +1,15 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RpgApi.Data;
 using RpgApi.Models;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace RpgApi.Controllers
 {
     [ApiController]
-    [Route("[controller]")]
+    [Route("[Controller]")]
     public class ArmasController : ControllerBase
     {
         private readonly DataContext _context;
@@ -20,35 +19,20 @@ namespace RpgApi.Controllers
             _context = context;
         }
 
-         [HttpGet("{id}")] //Buscar pelo id
-        public async Task<IActionResult> GetSingle(int id)
-        {
-            try
-            {
-                Arma a = await _context.TB_ARMAS.FirstOrDefaultAsync(aBusca => aBusca.Id == id);
-                //using Microsoft.EntityFrameworkCore;
-
-                return Ok(a);
-            }
-            catch (System.Exception ex)
-            {
-                return BadRequest(ex.Message + " - " + ex.InnerException);
-            }
-        }
-
         [HttpGet("GetAll")]
-        public async Task<IActionResult> Get()
-        {
+        public async Task<IActionResult> GetAll(){
+
             try
             {
                 //using System.Collections.Generic;
-                List<Arma> lista = await _context.TB_ARMAS.ToListAsync();
-                return Ok(lista);
+                List<Arma> armas = await _context.TB_ARMAS.ToListAsync();
+                return Ok(armas);
             }
             catch (System.Exception ex)
             {
                 return BadRequest(ex.Message + " - " + ex.InnerException);
             }
+            
         }
 
         [HttpPost]
@@ -57,12 +41,13 @@ namespace RpgApi.Controllers
             try
             {               
                 if(novaArma.Dano == 0)
-                  throw new Exception("O Dano da arma não pode ser 0");
-
-                Personagem? p = await _context.TB_PERSONAGENS.FirstOrDefaultAsync(p => p.Id == novaArma.PersonagemId);
+                  throw new Exception("O Dano da arma não pode ser 0.");
                 
+                Personagem p = await _context.TB_PERSONAGENS
+                    .FirstOrDefaultAsync(p =>p.Id ==  novaArma.PersonagemId);
+
                 if(p == null)
-                    throw new Exception("Não existe personagem com o Id informado.");
+                    throw new Exception("Não existe personagem com o ID informado");
 
                 await _context.TB_ARMAS.AddAsync(novaArma);
                 await _context.SaveChangesAsync();
@@ -71,7 +56,7 @@ namespace RpgApi.Controllers
             }
             catch (System.Exception ex)
             {
-                return BadRequest(ex.Message + " - " + ex.InnerException);
+                return BadRequest(ex.Message);
             }
         }
 

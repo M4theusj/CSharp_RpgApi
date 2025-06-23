@@ -16,12 +16,12 @@ namespace RpgApi.Utils
             }
         }
 
-        public static bool VerificarPasswordHash(string password, byte[] hash, byte[] salt)
-        {
+        public static bool VerificarPasswordHash(string password, byte[] hash, byte[] salt){
             using (var hmac = new System.Security.Cryptography.HMACSHA512(salt))
             {
                 var computedHash = hmac.ComputeHash(System.Text.Encoding.UTF8.GetBytes(password));
-                for (int i = 0; i < computedHash.Length; i++)
+
+                for (int i =  0; i < computedHash.Length; i++)
                 {
                     if (computedHash[i] != hash[i])
                     {
@@ -31,8 +31,5 @@ namespace RpgApi.Utils
                 return true;
             }
         }
-
-        
-
     }
 }

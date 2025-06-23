@@ -12,6 +12,15 @@ namespace RpgApi.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.AlterColumn<string>(
+                name: "Nome",
+                table: "TB_PERSONAGENS",
+                type: "Varchar(200)",
+                maxLength: 200,
+                nullable: false,
+                oldClrType: typeof(string),
+                oldType: "nvarchar(max)");
+
             migrationBuilder.CreateTable(
                 name: "TB_ARMAS",
                 columns: table => new
@@ -46,6 +55,15 @@ namespace RpgApi.Migrations
         {
             migrationBuilder.DropTable(
                 name: "TB_ARMAS");
+
+            migrationBuilder.AlterColumn<string>(
+                name: "Nome",
+                table: "TB_PERSONAGENS",
+                type: "nvarchar(max)",
+                nullable: false,
+                oldClrType: typeof(string),
+                oldType: "Varchar(200)",
+                oldMaxLength: 200);
         }
     }
 }
